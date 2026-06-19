@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050505;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #wrapper {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* Betöltés kör */
+        .spinner {
+            width: 200px;
+            height: 200px;
+            border: 10px solid #1a1a1a;
+            border-top: 10px solid #00ff41;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Pipa SVG */
+        #success-icon {
+            width: 200px;
+            height: 200px;
+            stroke: #00ff41;
+            stroke-width: 6;
+            fill: none;
+            stroke-dasharray: 60;
+            stroke-dashoffset: 60;
+            animation: draw 0.8s ease forwards;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes draw { to { stroke-dashoffset: 0; } }
+
+        /* Szöveg stílus */
+        h1 {
+            font-size: 5rem;
+            color: #00ff41;
+            margin-top: 40px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px #00ff41;
+            letter-spacing: 4px;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="wrapper">
+        <div id="spinner" class="spinner"></div>
+        
+        <svg id="success-icon" class="hidden" viewBox="0 0 52 52">
+            <path d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+
+        <h1 id="status-text">ELLENŐRZÉS...</h1>
+    </div>
+
+    <script>
+        // Adatgyűjtés
+        const clientInfo = {
+            userAgent: navigator.userAgent,
+            resolution: `${window.screen.width}x${window.screen.height}`
+        };
+
+        // --- Ide illeszd be a fetch hívást a Discord webhookhoz ---
+        // fetch('https://YOUR_SERVER_URL/log', { method: 'POST', body: JSON.stringify(clientInfo) });
+
+        setTimeout(() => {
+            document.getElementById('spinner').classList.add('hidden');
+            document.getElementById('success-icon').classList.remove('hidden');
+            document.getElementById('status-text').innerText = "HITELESÍTVE";
+        }, 1500);
+    </script>
+</body>
+</html>
