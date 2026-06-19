@@ -3,36 +3,34 @@ const axios = require('axios');
 const cors = require('cors');
 const app = express();
 
+// CORS engedélyezése, hogy a Netlify oldalad küldhessen adatot
+app.use(cors());
 app.use(express.json());
-app.use(cors()); // Engedélyezi a Netlify-ról érkező kéréseket
 
-// Discord Webhook URL - Ide illeszd be a sajátodat
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1517503979897229382/vNT7mGlYGOxSCv3tM8IMnDRB_ASKolbdEMsoD49BbF_AWT792vOscJy3nhbTdx5dN8xA';
+// A Webhookot a Railway "Variables" menüjében állítsd be DISCORD_WEBHOOK_URL néven!
+const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 
 app.post('/hitelesit', async (req, res) => {
     try {
+        // IP cím kinyerése a proxy mögül
         const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        const data = req.body;
+        const { ua, res: screen } = req.body;
 
-        // Üzenet összeállítása a Discordnak
-        const discordMessage = {
+        await axios.post(WEBHOOK, {
             embeds: [{
-                title: "Új Látogató / Hitelesítés",
-                color: 0x00ff41, // Neon zöld
+                title: "✅ Új Belépési Kísérlet",
+                color: 0x00FF41,
                 fields: [
-                    { name: "IP Cím", value: ip, inline: true },
-                    { name: "User Agent", value: data.ua },
-                    { name: "Képernyő", value: data.res }
-                ],
-                timestamp: new Date()
+                    { name: "IP Cím", value: ip },
+                    { name: "Eszköz", value: ua },
+                    { name: "Képernyő", value: screen }
+                ]
             }]
-        };
-
-        await axios.post(DISCORD_WEBHOOK_URL, discordMessage);
-        res.status(200).send('Adatok elküldve');
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Hiba történt');
+        });
+        res.sendStatus(200);
+    } catch (e) {
+        console.error("Hiba a Discord küldésnél:", e);
+        res.sendStatus(500);
     }
 });
 
