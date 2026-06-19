@@ -3,45 +3,34 @@ const axios = require('axios');
 const cors = require('cors');
 const app = express();
 
-// 1. A legfontosabb: Globális CORS beállítás minden kérésre
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    
-    // Kezeljük a preflight (OPTIONS) kéréseket
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
+// A lehető legkorábban inicializáljuk
+app.use(cors());
+app.options('*', cors()); 
 
 app.use(express.json());
 
 const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 
 app.post('/hitelesit', async (req, res) => {
+    if (!WEBHOOK) return res.status(500).send("Webhook nincs beállítva");
+    
     try {
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-        const { ua, res: screen } = req.body;
-
         await axios.post(WEBHOOK, {
             embeds: [{
                 title: "✅ Új Belépési Kísérlet",
                 color: 0x00FF41,
                 fields: [
-                    { name: "IP Cím", value: ip },
-                    { name: "Eszköz", value: ua },
-                    { name: "Képernyő", value: screen }
+                    { name: "IP", value: req.headers['x-forwarded-for'] || req.socket.remoteAddress },
+                    { name: "Eszköz", value: req.body.ua },
+                    { name: "Képernyő", value: req.body.res }
                 ]
             }]
         });
-        res.sendStatus(200);
+        res.status(200).json({ status: "OK" });
     } catch (e) {
-        console.error("Hiba a Discord küldésnél:", e);
-        res.sendStatus(500);
+        res.status(500).json({ error: "Hiba a Discord küldésnél" });
     }
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Szerver fut a ${PORT}-os porton`));
